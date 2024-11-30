@@ -50,7 +50,7 @@ func main() {
 }
 
 func runDeletion(accessible bool) {
-	err := deleteBranches(selectedBranches)
+	branches, err := deleteBranches(selectedBranches)
 	if err != nil {
 		newForm := huh.NewForm(
 			huh.NewGroup(huh.NewConfirm().Title("It appears that normal deletion didn't work. Do you want to force delete the branches?").Affirmative("Yes").Negative("No").Value(&confirmed)),
@@ -62,7 +62,7 @@ func runDeletion(accessible bool) {
 		}
 
 		if confirmed {
-			err = forceDeleteBranches(selectedBranches)
+			err = forceDeleteBranches(branches)
 			if err != nil {
 				fmt.Println("Uh oh:", err)
 				os.Exit(1)
@@ -101,39 +101,35 @@ func getBranches() ([]string, error) {
 	return branches, nil
 }
 
-func deleteBranches(branches []string) error {
-	args := append([]string{"branch", "-d"})
-	for _, branch := range branches {
-		args = append(args, strings.TrimSpace(branch))
-	}
-	cmd := exec.Command("git", args...)
+func deleteBranches(branches []string) ([]string, error) {
+	for idx, branch := range branches {
+		cmd := exec.Command("git", "branch", "-d", branch)
 
-	if errors.Is(cmd.Err, exec.ErrDot) {
-		cmd.Err = nil
-	}
+		if errors.Is(cmd.Err, exec.ErrDot) {
+			cmd.Err = nil
+		}
 
-	err := cmd.Run()
-	if err != nil {
-		return err
+		err := cmd.Run()
+		if err != nil {
+			return branches[idx:], err
+		}
 	}
 
-	return nil
+	return []string{}, nil
 }
 
 func forceDeleteBranches(branches []string) error {
-	args := append([]string{"branch", "-D"})
 	for _, branch := range branches {
-		args = append(args, strings.TrimSpace(branch))
-	}
-	cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", "branch", "-D", branch)
 
-	if errors.Is(cmd.Err, exec.ErrDot) {
-		cmd.Err = nil
-	}
+		if errors.Is(cmd.Err, exec.ErrDot) {
+			cmd.Err = nil
+		}
 
-	err := cmd.Run()
-	if err != nil {
-		return err
+		err := cmd.Run()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
